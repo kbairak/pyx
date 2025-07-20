@@ -1,5 +1,5 @@
+import enum
 from collections.abc import Callable
-from copy import copy
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -8,74 +8,65 @@ from pyx.element import E
 active_component: "dict[Literal['current'], None | Component]" = {"current": None}
 
 
+class PatchType(enum.Enum):
+    CHANGE_TEXT = enum.auto()
+
+
+def diff(old: E, new: E) -> list:
+    result = []
+    if (
+        old.tag == new.tag
+        and old.props == new.props
+        and len(old.children) == len(new.children) == 1
+        and isinstance(old.children[0], str)
+        and isinstance(new.children[0], str)
+        and old.children[0] != new.children[0]
+    ):
+        result.append((PatchType.CHANGE_TEXT, new.children[0]))
+    return result
+
+
 @dataclass
 class Component:
     func: Callable[..., E]
     children: list[Any]
     props: dict[str, Any]
-    root: Any
-    parent: Any
+
+    renderer: Any
+
+    widget: Any = None
+
     state: list[Any] = field(default_factory=list)
     pointer: int | None = None
 
-    virtual_dom_as_returned: E | None = None
-    virtual_dom_with_components: E | None = None
-    virtual_dom_fully_expanded: E | None = None
+    virtual_dom: E | None = None
 
     def __post_init__(self):
         active_component["current"] = self
-        self.virtual_dom_as_returned = self.func(*self.children, **self.props)
+        self.virtual_dom = self.func(*self.children, **self.props)
         active_component["current"] = None
 
-        self.virtual_dom_with_components = copy(self.virtual_dom_as_returned)
-        self.virtual_dom_fully_expanded = copy(self.virtual_dom_as_returned)
-        for i, e in enumerate(self.virtual_dom_as_returned.children):
-            if not isinstance(e, E) or not callable(e.tag):
-                continue
-            component = Component(e.tag, e.children, e.props, self.root, self)
-            self.virtual_dom_with_components.children[i] = component
-            self.virtual_dom_fully_expanded.children[i] = component.virtual_dom_fully_expanded
+        for i, child in enumerate(list(self.virtual_dom.children)):
+            if isinstance(child, E) and callable(child.tag):
+                self.virtual_dom.children[i] = Component(
+                    child.tag, child.children, child.props, self.renderer
+                )
+
+        self.widget = self.renderer.draw(self.virtual_dom)
 
     def set_state(self, index: int, value: Any) -> None:
         self.state[index] = value
-        if isinstance(self.parent, Component):
-            self.parent.rerender()
-        else:
-            self.rerender()
+        self.rerender()
 
-    def rerender(self) -> E:
+    def rerender(self):
         active_component["current"] = self
         self.pointer = 0
-        self.virtual_dom_as_returned = self.func(*self.children, **self.props)
+        new_virtual_dom = self.func(*self.children, **self.props)
         self.pointer = None
         active_component["current"] = None
 
-        self.virtual_dom_fully_expanded = copy(self.virtual_dom_as_returned)
-        for i, e in enumerate(self.virtual_dom_as_returned.children):
-            if not isinstance(e, E) or not callable(e.tag):
-                continue
-            assert self.virtual_dom_with_components is not None
-            component = self.virtual_dom_with_components.children[i]
-            inner_dom = component.rerender()
-            assert self.virtual_dom_fully_expanded is not None
-            self.virtual_dom_fully_expanded.children[i] = inner_dom
-
-        if not isinstance(self.parent, Component):
-            self.parent.update(self.virtual_dom_fully_expanded)
-
-        return self.virtual_dom_fully_expanded
-
-    def _walk_dom_and_replace_with_components(self, src: E) -> E:
-        dst = E(src.tag)
-        for key, value in src.props.items():
-            if isinstance(value, E) and callable(value.tag):
-                dst.props[key] = Component(value.tag, value.children, value.props, self.root, self)
-            else:
-                dst.props[key] = value
-        for child in src.children:
-            if isinstance(child, E) and callable(child.tag):
-                component = Component(child.tag, child.children, child.props, self.root, self)
-                dst.children.append(component)
-            else:
-                dst.children.append(child)
-        return dst
+        assert self.virtual_dom is not None
+        patch_list = diff(self.virtual_dom, new_virtual_dom)
+        self.widget = self.renderer.apply_patch_list(self.widget, patch_list)
+        self.virtual_dom = new_virtual_dom
+        self.renderer.refresh()
