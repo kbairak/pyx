@@ -35,8 +35,8 @@ async def _run(e: E):
 
     live = Live()
     root = Root(live)
-    component = Component(e.tag, root)
-    element = component.first_render()
+    component = Component(e.tag, root, e.children, e.props)
+    element = component.first_render(*e.children, **e.props)
     live.update(draw(element))
     live.start()
     while True:

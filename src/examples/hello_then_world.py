@@ -18,8 +18,9 @@ def HelloThenWorld():
         task.current = asyncio.create_task(update())
         return lambda: task.current.cancel()
 
-    return E("div")[msg]
+    return E("div")[msg]  # Equivalent to `return <div>{msg}</div>`
 
 
 if __name__ == "__main__":
+    # Equivalent to `createRoot(<HelloThenWorld />)`
     run(E(HelloThenWorld))

@@ -11,7 +11,9 @@ active_component: "dict[Literal['current'], None | Component]" = {"current": Non
 @dataclass
 class Component:
     func: Callable[..., E]
-    parent: Any = None
+    parent: Any
+    children: list[Any]
+    props: dict[str, Any]
     state: list[Any] = field(default_factory=list)
     pointer: int | None = None
 
@@ -19,9 +21,9 @@ class Component:
     virtual_dom_with_components: E | None = None
     virtual_dom_fully_expanded: E | None = None
 
-    def first_render(self) -> E:
+    def first_render(self, *children, **props) -> E:
         active_component["current"] = self
-        self.virtual_dom_as_returned = self.func()
+        self.virtual_dom_as_returned = self.func(*children, **props)
         active_component["current"] = None
 
         self.virtual_dom_with_components = copy(self.virtual_dom_as_returned)
@@ -29,8 +31,8 @@ class Component:
         for i, e in enumerate(self.virtual_dom_as_returned.children):
             if not isinstance(e, E) or not callable(e.tag):
                 continue
-            component = Component(e.tag, self)
-            inner_dom = component.first_render()
+            component = Component(e.tag, self, e.children, e.props)
+            inner_dom = component.first_render(*e.children, **e.props)
             self.virtual_dom_with_components.children[i] = component
             self.virtual_dom_fully_expanded.children[i] = inner_dom
 
@@ -46,7 +48,7 @@ class Component:
     def rerender(self) -> E:
         active_component["current"] = self
         self.pointer = 0
-        self.virtual_dom_as_returned = self.func()
+        self.virtual_dom_as_returned = self.func(*self.children, **self.props)
         self.pointer = None
         active_component["current"] = None
 
