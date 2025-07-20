@@ -1,13 +1,15 @@
 import asyncio
 import random
 
-import pyx
+import pyx.rich
 from pyx import E
-from pyx.rich import run
 
 
 def ProgressBar(interval=0.03):
+    # Equivalent to `const [completion, setCompletion] = useState(0.0)`
     completion, set_completion = pyx.use_state(0.0)
+
+    # Equivalent to `const task = useRef()`
     task: pyx.Ref[asyncio.Task | None] = pyx.use_ref()
 
     async def update():
@@ -18,6 +20,7 @@ def ProgressBar(interval=0.03):
             actual_completion = min(actual_completion, 1.0)
             set_completion(actual_completion)
 
+    # Equivalent to `useEffect(() => { ... }, [])`
     @pyx.use_effect([])
     def _():
         task.current = asyncio.create_task(update())
@@ -45,4 +48,4 @@ def Main():
 
 
 if __name__ == "__main__":
-    run(E(Main))  # Equivalent to createRoot(<Main />)
+    pyx.rich.run(E(Main))  # Equivalent to createRoot(<Main />)

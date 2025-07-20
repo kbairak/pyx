@@ -1,18 +1,21 @@
 import asyncio
 
-import pyx
+import pyx.rich
 from pyx import E
-from pyx.rich import run
 
 
 def HelloThenWorld():
+    # Equivalent to `const [msg, setMsg] = useState("hello")`
     msg, set_msg = pyx.use_state("hello")
+
+    # Equivalent to `const task = useRef()`
     task: pyx.Ref[asyncio.Task | None] = pyx.use_ref()
 
     async def update():
         await asyncio.sleep(2)
         set_msg("hello world")
 
+    # Equivalent to `useEffect(() => { ... }, [])`
     @pyx.use_effect([])
     def _():
         task.current = asyncio.create_task(update())
@@ -23,4 +26,4 @@ def HelloThenWorld():
 
 if __name__ == "__main__":
     # Equivalent to `createRoot(<HelloThenWorld />)`
-    run(E(HelloThenWorld))
+    pyx.rich.run(E(HelloThenWorld))
