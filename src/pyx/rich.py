@@ -35,9 +35,8 @@ async def _run(e: E):
 
     live = Live()
     root = Root(live)
-    component = Component(e.tag, root, e.children, e.props)
-    element = component.first_render(*e.children, **e.props)
-    live.update(draw(element))
+    component = Component(e.tag, e.children, e.props, root, root)
+    live.update(draw(component.virtual_dom_fully_expanded))
     live.start()
     while True:
         all_tasks = asyncio.all_tasks()

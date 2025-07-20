@@ -11,9 +11,10 @@ active_component: "dict[Literal['current'], None | Component]" = {"current": Non
 @dataclass
 class Component:
     func: Callable[..., E]
-    parent: Any
     children: list[Any]
     props: dict[str, Any]
+    root: Any
+    parent: Any
     state: list[Any] = field(default_factory=list)
     pointer: int | None = None
 
@@ -21,9 +22,9 @@ class Component:
     virtual_dom_with_components: E | None = None
     virtual_dom_fully_expanded: E | None = None
 
-    def first_render(self, *children, **props) -> E:
+    def __post_init__(self):
         active_component["current"] = self
-        self.virtual_dom_as_returned = self.func(*children, **props)
+        self.virtual_dom_as_returned = self.func(*self.children, **self.props)
         active_component["current"] = None
 
         self.virtual_dom_with_components = copy(self.virtual_dom_as_returned)
@@ -31,12 +32,9 @@ class Component:
         for i, e in enumerate(self.virtual_dom_as_returned.children):
             if not isinstance(e, E) or not callable(e.tag):
                 continue
-            component = Component(e.tag, self, e.children, e.props)
-            inner_dom = component.first_render(*e.children, **e.props)
+            component = Component(e.tag, e.children, e.props, self.root, self)
             self.virtual_dom_with_components.children[i] = component
-            self.virtual_dom_fully_expanded.children[i] = inner_dom
-
-        return self.virtual_dom_fully_expanded
+            self.virtual_dom_fully_expanded.children[i] = component.virtual_dom_fully_expanded
 
     def set_state(self, index: int, value: Any) -> None:
         self.state[index] = value
@@ -66,3 +64,18 @@ class Component:
             self.parent.update(self.virtual_dom_fully_expanded)
 
         return self.virtual_dom_fully_expanded
+
+    def _walk_dom_and_replace_with_components(self, src: E) -> E:
+        dst = E(src.tag)
+        for key, value in src.props.items():
+            if isinstance(value, E) and callable(value.tag):
+                dst.props[key] = Component(value.tag, value.children, value.props, self.root, self)
+            else:
+                dst.props[key] = value
+        for child in src.children:
+            if isinstance(child, E) and callable(child.tag):
+                component = Component(child.tag, child.children, child.props, self.root, self)
+                dst.children.append(component)
+            else:
+                dst.children.append(child)
+        return dst
