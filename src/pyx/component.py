@@ -9,7 +9,7 @@ active_component: "dict[Literal['current'], None | Component]" = {"current": Non
 
 class PatchType(enum.Enum):
     CHANGE_TEXT = enum.auto()
-    INSERT_CHILD = enum.auto()
+    REPLACE_CHILD = enum.auto()
 
 
 def diff(old: E, new: E) -> list:
@@ -25,7 +25,7 @@ def diff(old: E, new: E) -> list:
         result.append((PatchType.CHANGE_TEXT, new.children[0]))
     for i, (left, right) in enumerate(zip(old.children, new.children, strict=False)):
         if left is None and right is not None:
-            result.append((PatchType.INSERT_CHILD, i, right))
+            result.append((PatchType.REPLACE_CHILD, i, right))
     return result
 
 
@@ -53,9 +53,6 @@ class Component:
 
     def set_state(self, index: int, value: Any) -> None:
         self.state[index] = value
-        self.rerender()
-
-    def rerender(self):
         active_component["current"] = self
         self.pointer = 0
         assert callable(self.element.tag)
@@ -64,18 +61,15 @@ class Component:
         active_component["current"] = None
 
         assert self.virtual_dom is not None
-        patch_list = diff(self.virtual_dom, new_virtual_dom)
-        for patch_type, *args in patch_list:
+        for patch_type, *args in diff(self.virtual_dom, new_virtual_dom):
             if patch_type == PatchType.CHANGE_TEXT:
                 (new_text,) = args
                 self.renderer.update_text(self.widget, new_text)
-            elif patch_type == PatchType.INSERT_CHILD:
+            elif patch_type == PatchType.REPLACE_CHILD:
                 index, new_element = args
-                if index == len(self.virtual_dom.children):
-                    self.virtual_dom.children.append(None)
-                elif index > len(self.virtual_dom.children):
+                if index > len(self.virtual_dom.children):
                     raise ValueError(
-                        f"Cannot insert child at index {index} in {self.virtual_dom=}"
+                        f"Cannot replace child at index {index} in {self.virtual_dom=}"
                     )
                 self.virtual_dom.children[index] = new_element
                 if callable(new_element.tag):

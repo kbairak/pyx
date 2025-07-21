@@ -13,7 +13,12 @@ from pyx.component import Component
 
 
 def _draw(e: E) -> Any:
-    if e.tag == "div" and len(e.children) == 1 and isinstance(e.children[0], str):
+    if (
+        e.tag == "div"
+        and len(e.children) == 1
+        and isinstance(e.children[0], str)
+        and len(e.props) == 0
+    ):
         return Text(e.children[0])
     elif e.tag == "" and len(e.props) == 0:
         widgets = []
@@ -73,11 +78,7 @@ async def _run(e: E, file: io.IOBase | None = None):
     component = Component(e, renderer)
     renderer.live.update(component.widget)
     renderer.live.start()
-    while True:
-        all_tasks = asyncio.all_tasks()
-        tasks = [t for t in all_tasks if t != asyncio.current_task()]
-        if len(tasks) == 0:
-            break
+    while len(tasks := [t for t in asyncio.all_tasks() if t != asyncio.current_task()]) > 0:
         await asyncio.wait(tasks)
     renderer.live.stop()
 

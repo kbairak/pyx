@@ -3,6 +3,7 @@ from pyx import E
 
 def test_fragment():
     assert str(E()) == "< />"
+    assert str(E()["hello world"]) == "<>hello world</>"
 
 
 def test_single():

@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -47,5 +48,22 @@ def use_effect(compare_list):
                 callback = func()
                 component.state[component.pointer] = (compare_list, callback)
             component.pointer += 1
+
+    return decorator
+
+
+def use_task(compare_list):
+    def decorator(func):
+        task: Ref[asyncio.Task | None] = use_ref()
+
+        @use_effect(compare_list)
+        def _():
+            task.current = asyncio.create_task(func())
+
+            def _callback():
+                assert task.current is not None
+                task.current.cancel()
+
+            return _callback
 
     return decorator

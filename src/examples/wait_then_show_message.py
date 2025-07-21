@@ -13,12 +13,14 @@ def Main():
         set_show_msg(True)
 
     # Equivalent to `return (
-    #   <ProgressBar on_complete={() => setShowMsg(true)} />
-    #   {showMsg && <div>Hello world</div>}
+    #   <>
+    #     <ProgressBar onComplete={onComplete} />
+    #     {showMsg && <div>Hello world</div>}
+    #   </>
     # )`
     return E()[
         E(ProgressBar, on_complete=_on_complete),
-        E("div")["Hello world"] if show_msg else None,
+        E("div")["Done"] if show_msg else None,
     ]
 
 
