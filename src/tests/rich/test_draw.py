@@ -2,14 +2,14 @@ from rich.console import Group
 from rich.text import Text
 
 from pyx import E
-from pyx.rich import _draw
+from pyx.rich import Renderer
 
 
 def test_simple_span():
-    assert _draw(E("div")["Hello, World!"]) == Text("Hello, World!")
+    assert Renderer.draw(E("div")["Hello, World!"]) == Text("Hello, World!")
 
 
 def test_fragment():
-    left = _draw(E()[E("div")["hello"], E("div")["world"]])
+    left = Renderer.draw(E()[E("div")["hello"], E("div")["world"]])
     right = Group(Text("hello"), Text("world"))
     assert left.__dict__ == right.__dict__

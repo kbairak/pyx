@@ -1,9 +1,8 @@
-## TODOs
+# TODOs
 
-- [ ] spans
-- [ ] env variable for debugging
-- [ ] styles
-- [ ] inline elements / spans
-- [ ] don't return widget from renderable
-- [ ] function setters
-- [ ] rerender asynchronously; batch state changes
+- [ ] Spans
+- [ ] Inline elements / spans
+- [ ] Function setters
+- [ ] Re-render asynchronously; batch state changes
+- [ ] More widgets
+- [ ] `use_context` hook

@@ -10,6 +10,8 @@ active_component: "dict[Literal['current'], None | Component]" = {"current": Non
 class PatchType(enum.Enum):
     CHANGE_TEXT = enum.auto()
     REPLACE_CHILD = enum.auto()
+    SET_PROP = enum.auto()
+    REMOVE_PROP = enum.auto()
 
 
 def diff(old: E, new: E) -> list:
@@ -23,6 +25,11 @@ def diff(old: E, new: E) -> list:
         and old.children[0] != new.children[0]
     ):
         result.append((PatchType.CHANGE_TEXT, new.children[0]))
+    for key in old.props.keys() | new.props.keys():
+        if key in new.props and (key not in old.props or old.props[key] != new.props[key]):
+            result.append((PatchType.SET_PROP, key, new.props[key]))
+        elif key not in new.props:
+            result.append((PatchType.REMOVE_PROP, key, None))
     for i, (left, right) in enumerate(zip(old.children, new.children, strict=False)):
         if left is None and right is not None:
             result.append((PatchType.REPLACE_CHILD, i, right))
@@ -61,10 +68,10 @@ class Component:
         active_component["current"] = None
 
         assert self.virtual_dom is not None
-        for patch_type, *args in diff(self.virtual_dom, new_virtual_dom):
-            if patch_type == PatchType.CHANGE_TEXT:
-                (new_text,) = args
-                self.renderer.update_text(self.widget, new_text)
+        for patch in diff(self.virtual_dom, new_virtual_dom):
+            patch_type, *args = patch
+            if patch_type in (PatchType.CHANGE_TEXT, PatchType.SET_PROP, PatchType.REMOVE_PROP):
+                self.renderer.apply_patch(self.widget, patch)
             elif patch_type == PatchType.REPLACE_CHILD:
                 index, new_element = args
                 if index > len(self.virtual_dom.children):
@@ -77,7 +84,7 @@ class Component:
                     widget = self.virtual_dom.children[index].widget
                 else:
                     widget = self.renderer.draw(new_element)
-                self.renderer.insert_child(self.widget, index, widget)
+                self.renderer.replace_child(self.widget, index, widget)
 
         self.virtual_dom = new_virtual_dom
         self.renderer.refresh()
