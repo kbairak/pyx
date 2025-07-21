@@ -1,38 +1,9 @@
-import asyncio
-import random
+import argparse
+import io
 
 import pyx.rich
+from examples.progress_bar import ProgressBar
 from pyx import E
-
-
-def ProgressBar(interval=0.03):
-    # Equivalent to `const [completion, setCompletion] = useState(0.0)`
-    completion, set_completion = pyx.use_state(0.0)
-
-    # Equivalent to `const task = useRef()`
-    task: pyx.Ref[asyncio.Task | None] = pyx.use_ref()
-
-    # Equivalent to `useEffect(() => { ... }, [])`
-    @pyx.use_effect([])
-    def _():
-        async def _update():
-            actual_completion = completion
-            while actual_completion < 1.0:
-                await asyncio.sleep(random.random() * interval)
-                actual_completion += random.random() * 0.02
-                actual_completion = min(actual_completion, 1.0)
-                set_completion(actual_completion)
-
-        task.current = asyncio.create_task(_update())
-
-        def _callback():
-            assert task.current is not None
-            task.current.cancel()
-
-        return _callback
-
-    # Equivalent to `return <div>{completion * 100}%</div>`
-    return E("div")[f"{completion * 100:6.2f}%"]
 
 
 def Main():
@@ -52,5 +23,11 @@ def Main():
     ]
 
 
+parser = argparse.ArgumentParser(description="Progress bars example")
+parser.add_argument("-s", action="store_true", help="Suppress output to enable debugging")
+
 if __name__ == "__main__":
-    pyx.rich.run(E(Main))  # Equivalent to createRoot(<Main />)
+    args = parser.parse_args()
+
+    # Equivalent to createRoot(<Main />)
+    pyx.rich.run(E(Main), file=io.StringIO() if args.s else None)

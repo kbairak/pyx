@@ -42,7 +42,8 @@ def use_effect(compare_list):
         else:
             prev_compare_list, prev_callback = component.state[component.pointer]
             if prev_compare_list != compare_list:
-                prev_callback()
+                if prev_callback is not None:
+                    prev_callback()
                 callback = func()
                 component.state[component.pointer] = (compare_list, callback)
             component.pointer += 1

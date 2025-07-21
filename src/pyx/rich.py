@@ -1,14 +1,15 @@
 import asyncio
+import io
 import reprlib
 from dataclasses import dataclass
 from typing import Any
 
-from rich.console import Group
+from rich.console import Console, Group
 from rich.live import Live
 from rich.text import Text
 
 from pyx import E
-from pyx.component import Component, PatchType
+from pyx.component import Component
 
 
 def _draw(e: E) -> Any:
@@ -17,23 +18,33 @@ def _draw(e: E) -> Any:
     elif e.tag == "" and len(e.props) == 0:
         widgets = []
         for child in e.children:
-            if isinstance(child, E):
+            if child is None:
+                continue
+            elif isinstance(child, E):
                 widgets.append(_draw(child))
             elif isinstance(child, Component):
-                widgets.extend(child.widget)
+                widgets.append(child.widget)
             else:
                 raise ValueError(f"Unsupported {child=}")
         return Group(*widgets)
     raise ValueError(f"Unsupported element: {reprlib.Repr(maxstring=70).repr(str(e))}")
 
 
-def _apply_patch_list(widget: Any, patch_list: list):
-    for patch_type, *args in patch_list:
-        if isinstance(widget, Text) and patch_type == PatchType.CHANGE_TEXT:
-            widget.plain = args[0]
+def _update_text(widget: Any, new_text: str) -> None:
+    if isinstance(widget, Text):
+        widget.plain = new_text
+    else:
+        raise ValueError(f"Cannot apply {new_text=} to {widget=}")
+
+
+def _insert_child(parent: Any, index: int, child: Any) -> None:
+    if isinstance(parent, Group):
+        if index < len(parent.renderables):
+            parent.renderables[index] = child
+        elif index == len(parent.renderables):
+            parent.renderables.append(child)
         else:
-            raise ValueError(f"Cannot apply patch: {(patch_type, args)=}")
-    return widget
+            raise ValueError(f"Cannot insert child at index {index} in {parent=}")
 
 
 @dataclass
@@ -45,17 +56,21 @@ class Renderer:
         return _draw(e)
 
     @staticmethod
-    def apply_patch_list(widget: Any, patch_list: list):
-        return _apply_patch_list(widget, patch_list)
+    def update_text(widget: Any, new_text: str) -> None:
+        _update_text(widget, new_text)
+
+    @staticmethod
+    def insert_child(parent: Any, index: int, child: Any) -> None:
+        _insert_child(parent, index, child)
 
     def refresh(self):
         self.live.refresh()
 
 
-async def _run(e: E):
-    renderer = Renderer(Live())
+async def _run(e: E, file: io.IOBase | None = None):
     assert callable(e.tag)
-    component = Component(e.tag, e.children, e.props, renderer)
+    renderer = Renderer(Live(console=Console(file=io.StringIO()) if file is not None else None))
+    component = Component(e, renderer)
     renderer.live.update(component.widget)
     renderer.live.start()
     while True:
@@ -67,5 +82,5 @@ async def _run(e: E):
     renderer.live.stop()
 
 
-def run(e: E):
-    asyncio.run(_run(e))
+def run(e: E, file: io.IOBase | None = None):
+    asyncio.run(_run(e, file))

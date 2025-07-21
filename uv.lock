@@ -331,9 +331,6 @@ wheels = [
 name = "pyx"
 version = "0.1.0"
 source = { editable = "." }
-dependencies = [
-    { name = "rich" },
-]
 
 [package.dev-dependencies]
 dev = [
@@ -343,9 +340,11 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+rich = [
+    { name = "rich" },
+]
 
 [package.metadata]
-requires-dist = [{ name = "rich", specifier = ">=14.0.0" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -355,6 +354,7 @@ dev = [
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "ruff", specifier = ">=0.12.4" },
 ]
+rich = [{ name = "rich", specifier = ">=14.0.0" }]
 
 [[package]]
 name = "rich"
