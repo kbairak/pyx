@@ -12,12 +12,14 @@ def use_state[T](default: T = None) -> tuple[T, Callable[[T], None]]:
     if component.pointer is None:
         component.state.append(default)
         index = len(component.state) - 1
-        return component.state[-1], lambda x: component.set_state(index, x)
+        return default, lambda x: component.set_state(index, x)
     else:
-        result = (
-            component.state[component.pointer],
-            lambda x: component.set_state(component.pointer, x),
-        )
+
+        def _setter(x):
+            assert component.pointer is not None
+            component.set_state(component.pointer, x)
+
+        result = (component.state[component.pointer], _setter)
         component.pointer += 1
         return result
 
@@ -32,8 +34,8 @@ def use_ref[T](default: T = None) -> Ref[T]:
     return ref
 
 
-def use_effect(compare_list):
-    def decorator(func):
+def use_effect(compare_list) -> Callable[[Callable[[], None | Callable[[], None]]], None]:
+    def decorator(func: Callable[[], None | Callable[[], None]]):
         component = active_component["current"]
         if component is None:
             raise RuntimeError("`use_effect` must be called within a component function")

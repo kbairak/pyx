@@ -20,7 +20,7 @@ class Renderer:
     @classmethod
     def draw(cls, e: E) -> Any:
         if e.tag == "div" and len(e.children) == 1 and isinstance(e.children[0], str):
-            return Text(e.children[0], e.props.get("style", None))
+            return Text(e.children[0], e.props.get("style", ""))
         elif e.tag == "" and len(e.props) == 0:
             widgets = []
             for child in e.children:
@@ -65,7 +65,6 @@ class Renderer:
 
 
 async def _run(e: E):
-    assert callable(e.tag)
     renderer = Renderer(
         Live(console=Console(file=io.StringIO()) if os.getenv("PYX_DEBUG") else None)
     )

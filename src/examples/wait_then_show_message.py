@@ -6,9 +6,6 @@ from pyx import E
 def Main():
     show_msg, set_show_msg = pyx.use_state(False)
 
-    def _on_complete():
-        set_show_msg(True)
-
     # Equivalent to `return (
     #   <>
     #     <ProgressBar onComplete={onComplete} />
@@ -16,7 +13,7 @@ def Main():
     #   </>
     # )`
     return E()[
-        E(ProgressBar, on_complete=_on_complete),
+        E(ProgressBar, on_complete=lambda: set_show_msg(True)),
         E("div")["Done"] if show_msg else None,
     ]
 
