@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import io
 import os
 import reprlib
@@ -7,6 +8,7 @@ from typing import Any
 
 from rich.console import Console, Group
 from rich.live import Live
+from rich.style import Style
 from rich.text import Text
 
 from pyx import E
@@ -19,8 +21,8 @@ class Renderer:
 
     @classmethod
     def draw(cls, e: E) -> Any:
-        if e.tag == "div" and len(e.children) == 1 and isinstance(e.children[0], str):
-            return Text(e.children[0], e.props.get("style", ""))
+        if e.tag == "div":
+            return cls._draw_div(e)
         elif e.tag == "" and len(e.props) == 0:
             widgets = []
             for child in e.children:
@@ -34,6 +36,17 @@ class Renderer:
                     raise ValueError(f"Unsupported {child=}")
             return Group(*widgets)
         raise ValueError(f"Unsupported element: {reprlib.Repr(maxstring=70).repr(str(e))}")
+
+    @staticmethod
+    def _draw_div(e):
+        if len(e.children) != 1 or not isinstance(e.children[0], str):
+            raise ValueError(f"Unsupported div: {reprlib.Repr(maxstring=70).repr(str(e))}")
+
+        if e.props.keys() <= inspect.signature(Style).parameters.keys():
+            style = Style(**e.props)
+        else:
+            style = e.props.get("style", "")
+        return Text(e.children[0], style)
 
     @staticmethod
     def apply_patch(widget: Any, patch) -> None:
