@@ -12,16 +12,19 @@ def use_state[T](default: T = None) -> tuple[T, Callable[[T], None]]:
     if component.pointer is None:
         component.state.append(default)
         index = len(component.state) - 1
-        return default, lambda x: component.set_state(index, x)
     else:
-
-        def _setter(x):
-            assert component.pointer is not None
-            component.set_state(component.pointer, x)
-
-        result = (component.state[component.pointer], _setter)
         component.pointer += 1
-        return result
+        index = component.pointer - 1
+
+    def _setter(value_or_setter_func: T | Callable[[T], T]) -> None:
+        value = (
+            value_or_setter_func(component.state[index])
+            if callable(value_or_setter_func)
+            else value_or_setter_func
+        )
+        component.set_state(index, value)
+
+    return component.state[index], _setter
 
 
 @dataclass

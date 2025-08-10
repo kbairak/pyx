@@ -12,7 +12,7 @@ from rich.style import Style
 from rich.text import Text
 
 from pyx import E
-from pyx.component import Component, PatchType
+from pyx.component import Component
 
 
 @dataclass
@@ -53,29 +53,36 @@ class Renderer:
         return Group(*widgets)
 
     @staticmethod
-    def apply_patch(widget: Any, patch) -> None:
-        patch_type, *args = patch
-        if patch_type == PatchType.CHANGE_TEXT and isinstance(widget, Text):
-            (new_text,) = args
-            widget.plain = new_text
-        elif (
-            patch_type == PatchType.SET_PROP
-            and isinstance(widget, Text)
-            and len(args) == 2
-            and args[0] == "style"
-        ):
-            widget.stylize(args[1])
+    def change_props(widget: Any, old_props: dict, new_props: dict):
+        if isinstance(widget, Text):
+            if new_props.keys() <= inspect.signature(Style).parameters.keys():
+                style = Style(**new_props)
+            else:
+                style = new_props.get("style", "")
+            widget.stylize(style)
         else:
-            raise ValueError(f"Cannot apply {patch=} to {widget=}")
+            raise ValueError(f"Unsupported widget for props change: {type(widget)}")
 
     @staticmethod
-    def replace_child(parent: Any, index: int, child: Any):
-        if isinstance(parent, Group):
-            # TODO: Handle empty children
-            parent.renderables.extend([child] * (index - len(parent.renderables) + 1))
-            parent.renderables[index] = child
+    def change_text(widget: Any, old_text: str, new_text: str):
+        if isinstance(widget, Text):
+            widget.plain = new_text
         else:
-            raise ValueError(f"Cannot replace {child=} in {parent=} in {index=}")
+            raise ValueError(f"Unsupported widget for text change: {type(widget)}")
+
+    @staticmethod
+    def insert_widget(parent_widget: Any, child_widget: Any, index: int):
+        if isinstance(parent_widget, Group):
+            parent_widget.renderables.insert(index, child_widget)
+        else:
+            raise ValueError(f"Unsupported parent widget for insertion: {type(parent_widget)}")
+
+    @staticmethod
+    def remove_widget(parent_widget: Any, index: int):
+        if isinstance(parent_widget, Group):
+            parent_widget.renderables.pop(index)
+        else:
+            raise ValueError(f"Unsupported parent widget for removal: {type(parent_widget)}")
 
     def refresh(self):
         self.live.refresh()

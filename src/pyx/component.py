@@ -1,39 +1,9 @@
-import enum
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from pyx.element import E
 
-active_component: "dict[Literal['current'], None | Component]" = {"current": None}
-
-
-class PatchType(enum.Enum):
-    CHANGE_TEXT = enum.auto()
-    REPLACE_CHILD = enum.auto()
-    SET_PROP = enum.auto()
-    REMOVE_PROP = enum.auto()
-
-
-def diff(old: E, new: E) -> list:
-    result = []
-    if (
-        old.tag == new.tag
-        and old.props == new.props
-        and len(old.children) == len(new.children) == 1
-        and isinstance(old.children[0], str)
-        and isinstance(new.children[0], str)
-        and old.children[0] != new.children[0]
-    ):
-        result.append((PatchType.CHANGE_TEXT, new.children[0]))
-    for key in old.props.keys() | new.props.keys():
-        if key in new.props and (key not in old.props or old.props[key] != new.props[key]):
-            result.append((PatchType.SET_PROP, key, new.props[key]))
-        elif key not in new.props:
-            result.append((PatchType.REMOVE_PROP, key, None))
-    for i, (left, right) in enumerate(zip(old.children, new.children, strict=False)):
-        if left is None and right is not None:
-            result.append((PatchType.REPLACE_CHILD, i, right))
-    return result
+active_component: "dict[Literal['current'], Component | None]" = {"current": None}
 
 
 @dataclass
@@ -68,23 +38,47 @@ class Component:
         active_component["current"] = None
 
         assert self.virtual_dom is not None
-        for patch in diff(self.virtual_dom, new_virtual_dom):
-            patch_type, *args = patch
-            if patch_type in (PatchType.CHANGE_TEXT, PatchType.SET_PROP, PatchType.REMOVE_PROP):
-                self.renderer.apply_patch(self.widget, patch)
-            elif patch_type == PatchType.REPLACE_CHILD:
-                index, new_element = args
-                if index > len(self.virtual_dom.children):
-                    raise ValueError(
-                        f"Cannot replace child at index {index} in {self.virtual_dom=}"
-                    )
-                self.virtual_dom.children[index] = new_element
-                if callable(new_element.tag):
-                    self.virtual_dom.children[index] = Component(new_element, self.renderer)
-                    widget = self.virtual_dom.children[index].widget
-                else:
-                    widget = self.renderer.draw(new_element)
-                self.renderer.replace_child(self.widget, index, widget)
+        if self.virtual_dom.tag != new_virtual_dom.tag:
+            # TODO: Must inform parent to replace me
+            raise NotImplementedError("Changing tag is not supported yet")
+
+        if (old_props := self.virtual_dom.props) != (new_props := new_virtual_dom.props):
+            # Must tell renderer to change my props
+            self.renderer.change_props(self.widget, old_props, new_props)
+
+        if (
+            len(self.virtual_dom.children) == len(new_virtual_dom.children) == 1
+            and isinstance((old_text := self.virtual_dom.children[0]), str)
+            and isinstance((new_text := new_virtual_dom.children[0]), str)
+        ):
+            self.renderer.change_text(self.widget, old_text, new_text)
+
+        else:
+            for i, (left, right) in enumerate(
+                zip(self.virtual_dom.children, new_virtual_dom.children, strict=False)
+            ):
+                if not left and right is not None:
+                    if isinstance(right, E):
+                        if callable(right.tag):
+                            new_virtual_dom.children[i] = Component(right, self.renderer)
+                            self.renderer.insert_widget(
+                                self.widget, new_virtual_dom.children[i].widget, i
+                            )
+                        else:
+                            widget = self.renderer.draw(right)
+                            self.renderer.insert_widget(self.widget, widget, i)
+                    elif isinstance(right, str):
+                        raise NotImplementedError("Adding text elements is not supported yet")
+                    else:
+                        raise ValueError(f"Unsupported right child: {right}")
+                elif left is not None and not right:
+                    if isinstance(left, Component):
+                        raise NotImplementedError("Removing components is not supported yet")
+                    else:
+                        self.renderer.remove_widget(
+                            self.widget,
+                            i - sum(1 for child in new_virtual_dom.children[:i] if not child),
+                        )
 
         self.virtual_dom = new_virtual_dom
         self.renderer.refresh()
