@@ -24,17 +24,7 @@ class Renderer:
         if e.tag == "div":
             return cls._draw_div(e)
         elif e.tag == "" and len(e.props) == 0:
-            widgets = []
-            for child in e.children:
-                if child is None:
-                    continue
-                elif isinstance(child, E):
-                    widgets.append(cls.draw(child))
-                elif isinstance(child, Component):
-                    widgets.append(child.widget)
-                else:
-                    raise ValueError(f"Unsupported {child=}")
-            return Group(*widgets)
+            return cls._draw_group(e)
         raise ValueError(f"Unsupported element: {reprlib.Repr(maxstring=70).repr(str(e))}")
 
     @staticmethod
@@ -47,6 +37,20 @@ class Renderer:
         else:
             style = e.props.get("style", "")
         return Text(e.children[0], style)
+
+    @classmethod
+    def _draw_group(cls, e: E) -> Group:
+        widgets = []
+        for child in e.children:
+            if not child:
+                continue
+            elif isinstance(child, E):
+                widgets.append(cls.draw(child))
+            elif isinstance(child, Component):
+                widgets.append(child.widget)
+            else:
+                raise ValueError(f"Unsupported {child=}")
+        return Group(*widgets)
 
     @staticmethod
     def apply_patch(widget: Any, patch) -> None:

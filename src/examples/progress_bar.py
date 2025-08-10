@@ -7,7 +7,7 @@ import pyx.rich
 from pyx import E
 
 
-def ProgressBar(interval: float = 0.03, on_complete: Callable[..., None] | None = None):
+def ProgressBar(interval: float = 0.03, on_complete: Callable[[], None] | None = None):
     # Equivalent to `const [completion, setCompletion] = useState(0.0)`
     completion, set_completion = pyx.use_state(0.0)
 
