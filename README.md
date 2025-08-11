@@ -12,3 +12,5 @@
 - [ ] `use_context` hook
 - [ ] Support `ref=` prop
 - [ ] (?) use custom classes for states, effects, might make setters more performant
+- [ ] Treat children as prop, like react does?
+- [ ] Inputs

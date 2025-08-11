@@ -1,10 +1,15 @@
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 
 from pyx.element import E
-from pyx.utils import defer
+from pyx.utils import defer, singleton
 
-active_component: "dict[Literal['current'], Component | None]" = {"current": None}
+
+@singleton
+@dataclass
+class active:
+    component: "Component | None" = None
+    pointer: int | None = None
 
 
 @dataclass
@@ -13,15 +18,14 @@ class Component:
     renderer: Any
     widget: Any = None
     state: list[Any] = field(default_factory=list)
-    pointer: int | None = None
     virtual_dom: E | None = None
     _dirty: bool = False
 
     def __post_init__(self):
-        active_component["current"] = self
+        active.component = self
         assert callable(self.element.tag)
         self.virtual_dom = self.element.tag(*self.element.children, **self.element.props)
-        active_component["current"] = None
+        active.component = None
 
         assert self.virtual_dom is not None
         for i, child in enumerate(list(self.virtual_dom.children)):
@@ -40,12 +44,12 @@ class Component:
                 if not self._dirty:
                     return
 
-                active_component["current"] = self
-                self.pointer = 0
+                active.component = self
+                active.pointer = 0
                 assert callable(self.element.tag)
                 new_virtual_dom = self.element.tag(*self.element.children, **self.element.props)
-                self.pointer = None
-                active_component["current"] = None
+                active.pointer = None
+                active.component = None
 
                 assert self.virtual_dom is not None
                 if self.virtual_dom.tag != new_virtual_dom.tag:

@@ -4,19 +4,19 @@ from dataclasses import dataclass
 
 from pyx.utils import defer
 
-from .component import active_component
+from .component import active
 
 
 def use_state[T](default: T = None) -> tuple[T, Callable[[T | Callable[[T], T]], None]]:
-    component = active_component["current"]
+    component = active.component
     if component is None:
         raise RuntimeError("`use_state` must be called within a component function")
-    if component.pointer is None:
+    if active.pointer is None:
         component.state.append((default,))
         index = len(component.state) - 1
     else:
-        component.pointer += 1
-        index = component.pointer - 1
+        active.pointer += 1
+        index = active.pointer - 1
 
     def _setter(value_or_setter_func: T | Callable[[T], T]) -> None:
         (prev_value,) = component.state[index]
@@ -43,10 +43,10 @@ def use_ref[T](default: T = None) -> Ref[T]:
 
 def use_effect(compare_list) -> Callable[[Callable[[], None | Callable[[], None]]], None]:
     def decorator(func: Callable[[], None | Callable[[], None]]):
-        component = active_component["current"]
+        component = active.component
         if component is None:
             raise RuntimeError("`use_effect` must be called within a component function")
-        if component.pointer is None:
+        if active.pointer is None:
             pointer = len(component.state)
             component.state.append((compare_list, None))
 
@@ -55,7 +55,7 @@ def use_effect(compare_list) -> Callable[[Callable[[], None | Callable[[], None]
                 component.state[pointer] = (compare_list, func())
 
         else:
-            pointer = component.pointer
+            pointer = active.pointer
 
             @defer
             async def _():
@@ -65,7 +65,7 @@ def use_effect(compare_list) -> Callable[[Callable[[], None | Callable[[], None]
                         prev_callback()
                     component.state[pointer] = (compare_list, func())
 
-            component.pointer += 1
+            active.pointer += 1
 
     return decorator
 

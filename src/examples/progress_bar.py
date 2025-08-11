@@ -2,7 +2,7 @@ import asyncio
 import random
 from collections.abc import Callable
 
-import pyx
+import pyx.rich
 from pyx import E
 
 
@@ -22,3 +22,7 @@ def ProgressBar(interval: float = 0.03, on_complete: Callable[[], None] | None =
 
     # Equivalent to `return <div>{completion * 100}%</div>`
     return E("div")[f"{completion * 100:6.2f}%"]
+
+
+if __name__ == "__main__":
+    pyx.rich.run(E(ProgressBar))
