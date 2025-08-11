@@ -1,5 +1,4 @@
 from collections.abc import Callable, Sequence
-from copy import deepcopy
 from typing import Self
 
 
@@ -9,17 +8,11 @@ class E:
         self.children = list(children)
         self.props = props
 
-    def __call__(self, **props) -> Self:
-        return self.__class__(self.tag, **self.props, **props)
-
     def __getitem__(self, index) -> Self:
         if isinstance(index, Sequence) and not isinstance(index, str):
             return self.__class__(self.tag, *self.children, *index, **self.props)
         else:
             return self.__class__(self.tag, *self.children, index, **self.props)
-
-    def __copy__(self) -> Self:
-        return deepcopy(self)
 
     def __str__(self) -> str:
         tag_str = self.tag.__name__ if callable(self.tag) else str(self.tag)

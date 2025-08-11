@@ -6,8 +6,10 @@ import reprlib
 from dataclasses import dataclass
 from typing import Any
 
+from rich import print
 from rich.console import Console, Group
 from rich.live import Live
+from rich.panel import Panel
 from rich.style import Style
 from rich.text import Text
 
@@ -23,6 +25,8 @@ class Renderer:
     def draw(cls, e: E) -> Any:
         if e.tag == "div":
             return cls._draw_div(e)
+        elif e.tag == "panel":
+            return cls._draw_panel(e)
         elif e.tag == "" and len(e.props) == 0:
             return cls._draw_group(e)
         raise ValueError(f"Unsupported element: {reprlib.Repr(maxstring=70).repr(str(e))}")
@@ -37,6 +41,13 @@ class Renderer:
         else:
             style = e.props.get("style", "")
         return Text(e.children[0], style)
+
+    @staticmethod
+    def _draw_panel(e):
+        if len(e.children) != 1 or not isinstance(e.children[0], str):
+            raise ValueError(f"Unsupported panel: {reprlib.Repr(maxstring=70).repr(str(e))}")
+
+        return Panel(e.children[0], **e.props)
 
     @classmethod
     def _draw_group(cls, e: E) -> Group:
@@ -60,6 +71,14 @@ class Renderer:
             else:
                 style = new_props.get("style", "")
             widget.stylize(style)
+        elif isinstance(widget, Panel):
+            defaults = {
+                key: value.default for key, value in inspect.signature(Panel).parameters.items()
+            }
+            for removed_prop in old_props.keys() - new_props.keys():
+                setattr(widget, removed_prop, defaults[removed_prop])
+            for key, value in new_props.items():
+                setattr(widget, key, value)
         else:
             raise ValueError(f"Unsupported widget for props change: {type(widget)}")
 
@@ -67,6 +86,8 @@ class Renderer:
     def change_text(widget: Any, old_text: str, new_text: str):
         if isinstance(widget, Text):
             widget.plain = new_text
+        elif isinstance(widget, Panel):
+            widget.renderable = new_text
         else:
             raise ValueError(f"Unsupported widget for text change: {type(widget)}")
 
@@ -89,15 +110,18 @@ class Renderer:
 
 
 async def _run(e: E):
-    renderer = Renderer(
-        Live(console=Console(file=io.StringIO()) if os.getenv("PYX_DEBUG") else None)
-    )
-    component = Component(e, renderer)
-    renderer.live.update(component.widget)
-    renderer.live.start()
-    while tasks := [t for t in asyncio.all_tasks() if t != asyncio.current_task()]:
-        await asyncio.wait(tasks)
-    renderer.live.stop()
+    if callable(e.tag):
+        renderer = Renderer(
+            Live(console=Console(file=io.StringIO()) if os.getenv("PYX_DEBUG") else None)
+        )
+        component = Component(e, renderer)
+        renderer.live.update(component.widget)
+        renderer.live.start()
+        while tasks := [t for t in asyncio.all_tasks() if t != asyncio.current_task()]:
+            await asyncio.wait(tasks)
+        renderer.live.stop()
+    else:
+        print(Renderer.draw(e))
 
 
 def run(e: E):

@@ -24,3 +24,10 @@ def examples():
             print(f"# {filename}\n")
             uv.run(f"src/examples/{filename}")()
             print()
+
+
+def lint():
+    "Run linters"
+
+    uv.run.ruff.check(fix=True)()
+    uv.run.ruff.format()
