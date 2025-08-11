@@ -71,7 +71,7 @@ class Component:
                     for i, (left, right) in enumerate(
                         zip(self.virtual_dom.children, new_virtual_dom.children, strict=False)
                     ):
-                        if not left and right is not None:
+                        if not left and right:
                             if isinstance(right, E):
                                 if callable(right.tag):
                                     new_virtual_dom.children[i] = Component(right, self.renderer)
@@ -87,7 +87,7 @@ class Component:
                                 )
                             else:
                                 raise ValueError(f"Unsupported right child: {right}")
-                        elif left is not None and not right:
+                        elif left and not right:
                             if isinstance(left, Component):
                                 left.unmount()
                             self.renderer.remove_widget(

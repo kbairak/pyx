@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from rich import print
+from rich.columns import Columns
 from rich.console import Console, Group
 from rich.live import Live
 from rich.panel import Panel
@@ -27,6 +28,8 @@ class Renderer:
             return cls._draw_div(e)
         elif e.tag == "panel":
             return cls._draw_panel(e)
+        elif e.tag == "columns":
+            return cls._draw_columns(e)
         elif e.tag == "" and len(e.props) == 0:
             return cls._draw_group(e)
         raise ValueError(f"Unsupported element: {reprlib.Repr(maxstring=70).repr(str(e))}")
@@ -63,6 +66,10 @@ class Renderer:
                 raise ValueError(f"Unsupported {child=}")
         return Group(*widgets)
 
+    @classmethod
+    def _draw_columns(cls, e: E) -> Columns:
+        return Columns(e.children, **e.props)
+
     @staticmethod
     def change_props(widget: Any, old_props: dict, new_props: dict):
         if isinstance(widget, Text):
@@ -74,6 +81,14 @@ class Renderer:
         elif isinstance(widget, Panel):
             defaults = {
                 key: value.default for key, value in inspect.signature(Panel).parameters.items()
+            }
+            for removed_prop in old_props.keys() - new_props.keys():
+                setattr(widget, removed_prop, defaults[removed_prop])
+            for key, value in new_props.items():
+                setattr(widget, key, value)
+        elif isinstance(widget, Columns):
+            defaults = {
+                key: value.default for key, value in inspect.signature(Columns).parameters.items()
             }
             for removed_prop in old_props.keys() - new_props.keys():
                 setattr(widget, removed_prop, defaults[removed_prop])
@@ -93,14 +108,14 @@ class Renderer:
 
     @staticmethod
     def insert_widget(parent_widget: Any, child_widget: Any, index: int):
-        if isinstance(parent_widget, Group):
+        if isinstance(parent_widget, (Group | Columns)):
             parent_widget.renderables.insert(index, child_widget)
         else:
             raise ValueError(f"Unsupported parent widget for insertion: {type(parent_widget)}")
 
     @staticmethod
     def remove_widget(parent_widget: Any, index: int):
-        if isinstance(parent_widget, Group):
+        if isinstance(parent_widget, (Group | Columns)):
             parent_widget.renderables.pop(index)
         else:
             raise ValueError(f"Unsupported parent widget for removal: {type(parent_widget)}")

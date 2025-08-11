@@ -4,16 +4,17 @@
 
 - [ ] Change my own tag
 - [ ] Can props be components (recursive search for elements/components)?
-- [ ] Treat children as prop, like react does?
+  - [ ] Treat children as prop, like react does?
 
 ## Other
 
 - [ ] More widgets
   - [x] panels
-  - [ ] syntax
-  - [ ] tables
+  - [x] columns
   - [ ] tree
   - [ ] layout
+  - [ ] tables
+  - [ ] syntax
 - [ ] Inline elements / spans
 - [ ] `use_context` hook
 - [ ] Support `ref=` prop
