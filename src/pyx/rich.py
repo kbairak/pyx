@@ -95,7 +95,7 @@ async def _run(e: E):
     component = Component(e, renderer)
     renderer.live.update(component.widget)
     renderer.live.start()
-    while len(tasks := [t for t in asyncio.all_tasks() if t != asyncio.current_task()]) > 0:
+    while tasks := [t for t in asyncio.all_tasks() if t != asyncio.current_task()]:
         await asyncio.wait(tasks)
     renderer.live.stop()
 

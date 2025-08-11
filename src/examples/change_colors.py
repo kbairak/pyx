@@ -16,6 +16,7 @@ def Main():
             await asyncio.sleep(0.3)
             set_style(color)
 
+    # Equivalent to `return <div style={style}>hello world</div>`
     return E("div", style=style)["hello world"]
 
 
