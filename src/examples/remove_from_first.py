@@ -14,11 +14,11 @@ def Main():
 
     @pyx.use_task([])
     async def _():
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.6)
         set_visibility([False, True, True, True])
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.6)
         set_visibility([False, False, True, True])
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.6)
         set_visibility([False, False, False, True])
 
     return E()[

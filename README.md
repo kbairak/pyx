@@ -5,9 +5,9 @@
 - [ ] Change my own tag
 - [ ] Can props be components (recursive search for elements/components)?
 
+## Other
+
 - [ ] Inline elements / spans
-- [ ] Re-render asynchronously; batch state changes
-- [ ] Run all effects **after** the first render
 - [ ] More widgets
 - [ ] `use_context` hook
 - [ ] Support `ref=` prop

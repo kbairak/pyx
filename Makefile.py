@@ -1,4 +1,5 @@
 import os
+import random
 
 import pipepy
 from pipepy import uv
@@ -16,7 +17,9 @@ def test():
 def examples():
     "Run all examples"
 
-    for filename in os.listdir("src/examples"):
+    filenames = os.listdir("src/examples")
+    random.shuffle(filenames)
+    for filename in filenames:
         if filename.endswith(".py") and not filename.startswith("_"):
             print(f"# {filename}\n")
             uv.run(f"src/examples/{filename}")()

@@ -2,6 +2,8 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from pyx.utils import defer
+
 from .component import active_component
 
 
@@ -45,15 +47,24 @@ def use_effect(compare_list) -> Callable[[Callable[[], None | Callable[[], None]
         if component is None:
             raise RuntimeError("`use_effect` must be called within a component function")
         if component.pointer is None:
-            callback = func()
-            component.state.append((compare_list, callback))
+            pointer = len(component.state)
+            component.state.append((compare_list, None))
+
+            @defer
+            async def _():
+                component.state[pointer] = (compare_list, func())
+
         else:
-            prev_compare_list, prev_callback = component.state[component.pointer]
-            if prev_compare_list != compare_list:
-                if prev_callback is not None:
-                    prev_callback()
-                callback = func()
-                component.state[component.pointer] = (compare_list, callback)
+            pointer = component.pointer
+
+            @defer
+            async def _():
+                prev_compare_list, prev_callback = component.state[pointer]
+                if prev_compare_list != compare_list:
+                    if prev_callback is not None:
+                        prev_callback()
+                    component.state[pointer] = (compare_list, func())
+
             component.pointer += 1
 
     return decorator

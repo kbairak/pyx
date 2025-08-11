@@ -1,9 +1,8 @@
-import argparse
 import asyncio
 import random
 from collections.abc import Callable
 
-import pyx.rich
+import pyx
 from pyx import E
 
 
@@ -23,13 +22,3 @@ def ProgressBar(interval: float = 0.03, on_complete: Callable[[], None] | None =
 
     # Equivalent to `return <div>{completion * 100}%</div>`
     return E("div")[f"{completion * 100:6.2f}%"]
-
-
-parser = argparse.ArgumentParser(description="Progress bar example")
-parser.add_argument("--interval", type=float, default=0.03, help="Interval in seconds (float)")
-
-if __name__ == "__main__":
-    args = parser.parse_args()
-
-    # Equivalent to `createRoot(<ProgressBar interval={interval} />)`
-    pyx.rich.run(E(ProgressBar, interval=args.interval))
