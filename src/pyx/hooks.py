@@ -5,26 +5,28 @@ from dataclasses import dataclass
 from .component import active_component
 
 
-def use_state[T](default: T = None) -> tuple[T, Callable[[T], None]]:
+def use_state[T](default: T = None) -> tuple[T, Callable[[T | Callable[[T], T]], None]]:
     component = active_component["current"]
     if component is None:
         raise RuntimeError("`use_state` must be called within a component function")
     if component.pointer is None:
-        component.state.append(default)
+        component.state.append((default,))
         index = len(component.state) - 1
     else:
         component.pointer += 1
         index = component.pointer - 1
 
     def _setter(value_or_setter_func: T | Callable[[T], T]) -> None:
+        (prev_value,) = component.state[index]
         value = (
-            value_or_setter_func(component.state[index])
+            value_or_setter_func(prev_value)
             if callable(value_or_setter_func)
             else value_or_setter_func
         )
         component.set_state(index, value)
 
-    return component.state[index], _setter
+    (prev_value,) = component.state[index]
+    return prev_value, _setter
 
 
 @dataclass

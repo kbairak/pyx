@@ -4,6 +4,10 @@ import pyx.rich
 from pyx import E
 
 
+def Inner(content):
+    return E("div")[f"--{content}--"]
+
+
 def Main():
     # Component managing a state variable with 4 booleans
     visibility, set_visibility = pyx.use_state([True, True, True, True])
@@ -18,10 +22,10 @@ def Main():
         set_visibility([False, False, False, True])
 
     return E()[
-        E("div")["one"] if visibility[0] else None,
-        E("div")["two"] if visibility[1] else None,
-        E("div")["three"] if visibility[2] else None,
-        E("div")["four"] if visibility[3] else None,
+        E(Inner)["one"] if visibility[0] else None,
+        E(Inner)["two"] if visibility[1] else None,
+        E(Inner)["three"] if visibility[2] else None,
+        E(Inner)["four"] if visibility[3] else None,
     ]
 
 

@@ -10,7 +10,7 @@ def HelloThenWorld():
 
     @pyx.use_task([])
     async def _():
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
         set_msg(lambda old_str: old_str + " world")
 
     return E("div")[msg]  # Equivalent to `return <div>{msg}</div>`

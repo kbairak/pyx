@@ -29,7 +29,7 @@ class Component:
         self.widget = self.renderer.draw(self.virtual_dom)
 
     def set_state(self, index: int, value: Any) -> None:
-        self.state[index] = value
+        self.state[index] = (value,)
         active_component["current"] = self
         self.pointer = 0
         assert callable(self.element.tag)
@@ -73,12 +73,25 @@ class Component:
                         raise ValueError(f"Unsupported right child: {right}")
                 elif left is not None and not right:
                     if isinstance(left, Component):
-                        raise NotImplementedError("Removing components is not supported yet")
-                    else:
-                        self.renderer.remove_widget(
-                            self.widget,
-                            i - sum(1 for child in new_virtual_dom.children[:i] if not child),
-                        )
+                        left.unmount()
+                    self.renderer.remove_widget(
+                        self.widget,
+                        i - sum(1 for child in new_virtual_dom.children[:i] if not child),
+                    )
 
         self.virtual_dom = new_virtual_dom
         self.renderer.refresh()
+
+    def unmount(self):
+        if self.virtual_dom is not None:
+            for child in self.virtual_dom.children:
+                if isinstance(child, Component):
+                    child.unmount()
+        for state in self.state:
+            try:
+                _, callback = state
+            except ValueError:
+                # Not an effect
+                continue
+            if callback is not None:
+                callback()
