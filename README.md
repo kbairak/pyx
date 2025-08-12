@@ -11,10 +11,10 @@
 - [ ] More widgets
   - [x] panels
   - [x] columns
-  - [ ] tree
-  - [ ] layout
   - [ ] tables
+  - [ ] layout
   - [ ] syntax
+  - [ ] tree
 - [ ] Inline elements / spans
 - [ ] `use_context` hook
 - [ ] Support `ref=` prop

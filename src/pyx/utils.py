@@ -20,7 +20,7 @@ def defer(func: Callable[[], Coroutine[None, None, None]]) -> Task:
     return asyncio.create_task(func())
 
 
-def singleton[T](cls: Callable[[], T]):
+def singleton[T](cls: Callable[[], T]) -> T:
     """
     >>> @singleton
     ... class foo:
