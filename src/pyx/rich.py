@@ -15,7 +15,7 @@ from rich.style import Style
 from rich.text import Text
 
 from pyx import E
-from pyx.component import Component
+from pyx.component import Component, active
 
 
 @dataclass
@@ -126,18 +126,18 @@ class Renderer:
 
 async def _run(e: E):
     if callable(e.tag):
-        renderer = Renderer(
-            Live(console=Console(file=io.StringIO()) if os.getenv("PYX_DEBUG") else None)
-        )
-        component = Component(e, renderer)
-        renderer.live.update(component.widget)
-        renderer.live.start()
+        component = Component(e)
+        active.renderer.live.update(component.widget)
+        active.renderer.live.start()
         while tasks := [t for t in asyncio.all_tasks() if t != asyncio.current_task()]:
             await asyncio.wait(tasks)
-        renderer.live.stop()
+        active.renderer.live.stop()
     else:
         print(Renderer.draw(e))
 
 
 def run(e: E):
+    active.renderer = Renderer(
+        Live(console=Console(file=io.StringIO()) if os.getenv("PYX_DEBUG") else None)
+    )
     asyncio.run(_run(e))

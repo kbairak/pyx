@@ -12,11 +12,11 @@ def use_state[T](default: T = None) -> tuple[T, Callable[[T | Callable[[T], T]],
     if component is None:
         raise RuntimeError("`use_state` must be called within a component function")
     if active.pointer is None:
+        index = len(component.state)
         component.state.append((default,))
-        index = len(component.state) - 1
     else:
+        index = active.pointer
         active.pointer += 1
-        index = active.pointer - 1
 
     def _setter(value_or_setter_func: T | Callable[[T], T]) -> None:
         (prev_value,) = component.state[index]
@@ -52,10 +52,12 @@ def use_effect(compare_list) -> Callable[[Callable[[], None | Callable[[], None]
 
             @defer
             async def _():
-                component.state[pointer] = (compare_list, func())
+                callback = func()
+                component.state[pointer] = (compare_list, callback)
 
         else:
             pointer = active.pointer
+            active.pointer += 1
 
             @defer
             async def _():
@@ -63,9 +65,8 @@ def use_effect(compare_list) -> Callable[[Callable[[], None | Callable[[], None]
                 if prev_compare_list != compare_list:
                     if prev_callback is not None:
                         prev_callback()
-                    component.state[pointer] = (compare_list, func())
-
-            active.pointer += 1
+                    callback = func()
+                    component.state[pointer] = (compare_list, callback)
 
     return decorator
 
