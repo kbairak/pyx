@@ -1,21 +1,16 @@
 import asyncio
-import inspect
 import io
 import os
-import reprlib
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
-from typing import Any
 
-from rich import print
-from rich.columns import Columns
 from rich.console import Console, Group
 from rich.live import Live
-from rich.panel import Panel
-from rich.style import Style
 from rich.text import Text
 
 from pyx import E
-from pyx.component import Component, active
+from pyx.node import Node, active
+from pyx.utils import is_list
 
 
 @dataclass
@@ -23,121 +18,75 @@ class Renderer:
     live: Live
 
     @classmethod
-    def draw(cls, e: E) -> Any:
-        if e.tag == "div":
-            return cls._draw_div(e)
-        elif e.tag == "panel":
-            return cls._draw_panel(e)
-        elif e.tag == "columns":
-            return cls._draw_columns(e)
-        elif e.tag == "" and len(e.props) == 0:
-            return cls._draw_group(e)
-        raise ValueError(f"Unsupported element: {reprlib.Repr(maxstring=70).repr(str(e))}")
+    def draw(cls, node: Node):
+        props = cls._convert_nodes_to_widgets(node.value)
+        assert isinstance(props, MutableMapping)
+        children = props.pop("children", "")
+        if node.tag == "div":
+            assert isinstance(children, str)
+            return Text(children, **props)
+        elif node.tag == "":
+            if is_list(children):
+                children = [child for child in children if child not in (None, False)]
+            if "fit" in props and (
+                isinstance(children, str) or not isinstance(children, Sequence)
+            ):
+                children = [children]
 
-    @staticmethod
-    def _draw_div(e):
-        if len(e.children) != 1 or not isinstance(e.children[0], str):
-            raise ValueError(f"Unsupported div: {reprlib.Repr(maxstring=70).repr(str(e))}")
-
-        if e.props.keys() <= inspect.signature(Style).parameters.keys():
-            style = Style(**e.props)
+            if isinstance(children, Sequence) and not isinstance(children, str):
+                return Group(*children, **props)
+            else:
+                return children
         else:
-            style = e.props.get("style", "")
-        return Text(e.children[0], style)
-
-    @staticmethod
-    def _draw_panel(e):
-        if len(e.children) != 1 or not isinstance(e.children[0], str):
-            raise ValueError(f"Unsupported panel: {reprlib.Repr(maxstring=70).repr(str(e))}")
-
-        return Panel(e.children[0], **e.props)
+            raise ValueError(f"Unsupported node tag: {node.tag}")
 
     @classmethod
-    def _draw_group(cls, e: E) -> Group:
-        widgets = []
-        for child in e.children:
-            if not child:
-                continue
-            elif isinstance(child, E):
-                widgets.append(cls.draw(child))
-            elif isinstance(child, Component):
-                widgets.append(child.widget)
+    def _convert_nodes_to_widgets(cls, obj):
+        if isinstance(obj, Node):
+            obj = obj.widget
+        elif isinstance(obj, Sequence) and not isinstance(obj, str):
+            obj = [cls._convert_nodes_to_widgets(item) for item in obj]
+        elif isinstance(obj, Mapping):
+            obj = {k: cls._convert_nodes_to_widgets(v) for k, v in obj.items()}
+        return obj
+
+    def replace_widget(self, node: Node) -> None:
+        node._widget = None
+
+        if node.parent is self:
+            self.live.update(node.widget)
+        elif isinstance(node.parent.widget, Text):
+            node.parent.widget.plain = node.widget
+        elif isinstance(node.parent.widget, Group):
+            prev_children = node.parent.value["children"]
+            widget_index = 0
+            for child in prev_children:
+                if child is node:
+                    break
+                if child.widget not in (None, False):
+                    widget_index += 1
+            if node.widget not in (None, False):
+                node.parent.widget._renderables[widget_index] = node.widget
             else:
-                raise ValueError(f"Unsupported {child=}")
-        return Group(*widgets)
-
-    @classmethod
-    def _draw_columns(cls, e: E) -> Columns:
-        return Columns(e.children, **e.props)
-
-    @staticmethod
-    def change_props(widget: Any, old_props: dict, new_props: dict):
-        if isinstance(widget, Text):
-            if new_props.keys() <= inspect.signature(Style).parameters.keys():
-                style = Style(**new_props)
-            else:
-                style = new_props.get("style", "")
-            widget.stylize(style)
-        elif isinstance(widget, Panel):
-            defaults = {
-                key: value.default for key, value in inspect.signature(Panel).parameters.items()
-            }
-            for removed_prop in old_props.keys() - new_props.keys():
-                setattr(widget, removed_prop, defaults[removed_prop])
-            for key, value in new_props.items():
-                setattr(widget, key, value)
-        elif isinstance(widget, Columns):
-            defaults = {
-                key: value.default for key, value in inspect.signature(Columns).parameters.items()
-            }
-            for removed_prop in old_props.keys() - new_props.keys():
-                setattr(widget, removed_prop, defaults[removed_prop])
-            for key, value in new_props.items():
-                setattr(widget, key, value)
+                del node.parent.widget._renderables[widget_index]
         else:
-            raise ValueError(f"Unsupported widget for props change: {type(widget)}")
+            self.replace_widget(node.parent)
 
-    @staticmethod
-    def change_text(widget: Any, old_text: str, new_text: str):
-        if isinstance(widget, Text):
-            widget.plain = new_text
-        elif isinstance(widget, Panel):
-            widget.renderable = new_text
-        else:
-            raise ValueError(f"Unsupported widget for text change: {type(widget)}")
-
-    @staticmethod
-    def insert_widget(parent_widget: Any, child_widget: Any, index: int):
-        if isinstance(parent_widget, (Group | Columns)):
-            parent_widget.renderables.insert(index, child_widget)
-        else:
-            raise ValueError(f"Unsupported parent widget for insertion: {type(parent_widget)}")
-
-    @staticmethod
-    def remove_widget(parent_widget: Any, index: int):
-        if isinstance(parent_widget, (Group | Columns)):
-            parent_widget.renderables.pop(index)
-        else:
-            raise ValueError(f"Unsupported parent widget for removal: {type(parent_widget)}")
-
-    def refresh(self):
+    def rerender(self):
         self.live.refresh()
 
 
+def run(e):
+    asyncio.run(_run(e))
+
+
 async def _run(e: E):
-    if callable(e.tag):
-        component = Component(e)
-        active.renderer.live.update(component.widget)
-        active.renderer.live.start()
-        while tasks := [t for t in asyncio.all_tasks() if t != asyncio.current_task()]:
-            await asyncio.wait(tasks)
-        active.renderer.live.stop()
-    else:
-        print(Renderer.draw(e))
-
-
-def run(e: E):
     active.renderer = Renderer(
         Live(console=Console(file=io.StringIO()) if os.getenv("PYX_DEBUG") else None)
     )
-    asyncio.run(_run(e))
+    root_node = Node(e, active.renderer)
+    active.renderer.live.update(root_node.widget)
+    active.renderer.live.start()
+    while tasks := [t for t in asyncio.all_tasks() if t != asyncio.current_task()]:
+        await asyncio.wait(tasks)
+    active.renderer.live.stop()

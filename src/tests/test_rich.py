@@ -1,15 +1,63 @@
-from rich.console import Group
-from rich.text import Text
+import os
+import random
 
+import pytest
+
+import pyx.rich
 from pyx import E
-from pyx.rich import Renderer
+from pyx.node import active
 
 
-def test_simple_span():
-    assert Renderer.draw(E("div")["Hello, World!"]) == Text("Hello, World!")
+@pytest.fixture
+def getvalue():
+    os.environ["PYX_DEBUG"] = "1"
+    return lambda: active.renderer.live.console.file.getvalue()
 
 
-def test_fragment():
-    left = Renderer.draw(E()[E("div")["hello"], E("div")["world"]])
-    right = Group(Text("hello"), Text("world"))
-    assert left.__dict__ == right.__dict__
+def test_string(getvalue):
+    pyx.rich.run("hello world as string")
+    assert getvalue() == "hello world as string"
+
+
+def test_fragment(getvalue):
+    pyx.rich.run(E()["hello world as fragment"])
+    assert getvalue() == "hello world as fragment"
+
+
+def test_div(getvalue):
+    pyx.rich.run(E("div")["hello world as div"])
+    assert getvalue() == "hello world as div"
+
+
+def test_group(getvalue):
+    pyx.rich.run(E()["hello", "world"])
+    assert getvalue() == "hello\nworld"
+
+
+def test_function(getvalue):
+    def Main():
+        return "hello world"
+
+    pyx.rich.run(E(Main))
+    assert getvalue() == "hello world"
+
+
+def test_nested_function(getvalue):
+    def Indented(children):
+        return f"  {children}"
+
+    pyx.rich.run(E()["hello", E(Indented)["world"]])
+    assert getvalue() == "hello\n  world"
+
+
+def test_color(getvalue):
+    pyx.rich.run(E("div", style="red")["hello world as red"])
+    assert getvalue() == "hello world as red"
+
+
+def test_random_color(getvalue):
+    def FunnyColor():
+        return random.choice(["red", "yellow"])
+
+    pyx.rich.run(E("div", style=E(FunnyColor))["hello world as funny text"])
+    assert getvalue() == "hello world as funny text"

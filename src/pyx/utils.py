@@ -1,6 +1,6 @@
 import asyncio
 from asyncio import Task
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Sequence
 
 
 def defer(func: Callable[[], Coroutine[None, None, None]]) -> Task:
@@ -34,3 +34,7 @@ def singleton[T](cls: Callable[[], T]) -> T:
     """
 
     return cls()
+
+
+def is_list(obj):
+    return isinstance(obj, Sequence) and not isinstance(obj, str)

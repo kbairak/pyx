@@ -1,22 +1,10 @@
 # TODOs
 
-## Diffs
-
-- [ ] Change my own tag
-- [ ] Can props be components (recursive search for elements/components)?
-  - [ ] Treat children as prop, like react does?
-
-## Other
-
+- [ ] Diffs
 - [ ] More widgets
-  - [x] panels
-  - [x] columns
-  - [ ] tables
-  - [ ] layout
-  - [ ] syntax
-  - [ ] tree
-- [ ] Inline elements / spans
-- [ ] `use_context` hook
-- [ ] Support `ref=` prop
-- [ ] (?) use custom classes for states, effects, might make setters more performant
+  - [ ] style props for `div`
+- [ ] Spans
+- [ ] `use_context`
+- [ ] `ref` prop
 - [ ] Inputs
+- [ ] Annotations

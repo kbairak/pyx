@@ -4,8 +4,8 @@ import pyx.rich
 from pyx import E
 
 
-def Inner(content):
-    return E("div")[f"--{content}--"]
+def Inner(children):
+    return E("div")[f"--{children}--"]
 
 
 def Main():

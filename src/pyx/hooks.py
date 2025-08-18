@@ -4,30 +4,32 @@ from dataclasses import dataclass
 
 from pyx.utils import defer
 
-from .component import active
+from .node import active
 
 
 def use_state[T](default: T = None) -> tuple[T, Callable[[T | Callable[[T], T]], None]]:
-    component = active.component
-    if component is None:
+    node = active.node
+    if node is None:
         raise RuntimeError("`use_state` must be called within a component function")
+    assert isinstance(node.state, list)
     if active.pointer is None:
-        index = len(component.state)
-        component.state.append((default,))
+        index = len(node.state)
+        node.state.append((default,))
     else:
         index = active.pointer
         active.pointer += 1
 
     def _setter(value_or_setter_func: T | Callable[[T], T]) -> None:
-        (prev_value,) = component.state[index]
+        assert isinstance(node.state, list)
+        (prev_value,) = node.state[index]
         value = (
             value_or_setter_func(prev_value)
             if callable(value_or_setter_func)
             else value_or_setter_func
         )
-        component.set_state(index, value)
+        node.set_state(index, value)
 
-    (prev_value,) = component.state[index]
+    (prev_value,) = node.state[index]
     return prev_value, _setter
 
 
@@ -43,17 +45,19 @@ def use_ref[T](default: T = None) -> Ref[T]:
 
 def use_effect(compare_list) -> Callable[[Callable[[], None | Callable[[], None]]], None]:
     def decorator(func: Callable[[], None | Callable[[], None]]):
-        component = active.component
-        if component is None:
+        node = active.node
+        if node is None:
             raise RuntimeError("`use_effect` must be called within a component function")
+        assert isinstance(node.state, list)
         if active.pointer is None:
-            pointer = len(component.state)
-            component.state.append((compare_list, None))
+            pointer = len(node.state)
+            node.state.append((compare_list, None))
 
             @defer
             async def _():
                 callback = func()
-                component.state[pointer] = (compare_list, callback)
+                assert isinstance(node.state, list)
+                node.state[pointer] = (compare_list, callback)
 
         else:
             pointer = active.pointer
@@ -61,12 +65,13 @@ def use_effect(compare_list) -> Callable[[Callable[[], None | Callable[[], None]
 
             @defer
             async def _():
-                prev_compare_list, prev_callback = component.state[pointer]
+                assert isinstance(node.state, list)
+                prev_compare_list, prev_callback = node.state[pointer]
                 if prev_compare_list != compare_list:
                     if prev_callback is not None:
                         prev_callback()
                     callback = func()
-                    component.state[pointer] = (compare_list, callback)
+                    node.state[pointer] = (compare_list, callback)
 
     return decorator
 
