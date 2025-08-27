@@ -50,27 +50,25 @@ class Renderer:
             obj = {k: cls._convert_nodes_to_widgets(v) for k, v in obj.items()}
         return obj
 
-    def replace_widget(self, node: Node) -> None:
-        node._widget = None
+    def replace_child(self, node: Node) -> None:
+        self.live.update(node.widget)
 
-        if node.parent is self:
-            self.live.update(node.widget)
-        elif isinstance(node.parent.widget, Text):
-            node.parent.widget.plain = node.widget
-        elif isinstance(node.parent.widget, Group):
-            prev_children = node.parent.value["children"]
-            widget_index = 0
-            for child in prev_children:
-                if child is node:
-                    break
-                if child.widget not in (None, False):
-                    widget_index += 1
-            if node.widget not in (None, False):
-                node.parent.widget._renderables[widget_index] = node.widget
+    def replace_node(self, parent, node):
+        # parent is not callable or literal
+        if parent.tag == "div":
+            # Lets find the node
+            if parent.value["children"] is node:
+                parent._widget.plain = node._widget
             else:
-                del node.parent.widget._renderables[widget_index]
+                raise NotImplementedError()
+        elif parent.tag == "":
+            if parent.value["children"] is node and parent.props.keys() == {"children"}:
+                parent._widget = node.widget
+                parent.parent.replace_child(parent)
+            else:
+                raise NotImplementedError()
         else:
-            self.replace_widget(node.parent)
+            raise NotImplementedError()
 
     def rerender(self):
         self.live.refresh()

@@ -94,30 +94,33 @@ class Node:
             self._dirty = True
             create_task(self.rerender())
 
-    async def rerender(self):
+    async def rerender(self) -> None:
+        # breakpoint()
         assert isinstance(self.value, Node) and callable(self.tag)
         with active.active_node_and_pointer(self):
             result = self.tag(**self.props)
 
-        self.diff(self.value, result)
+        if (
+            self.value.tag == "LITERAL"
+            and not isinstance(result, E)
+            and self.value.value != result
+        ):
+            self.value = Node(result, self)
+            self._widget = self.value.widget
+            # Hey parent, I just changed my widget, do you want to do something about it?
+            self.parent.replace_child(self)
 
         active.renderer.rerender()
         self._dirty = False
 
-    def diff(self, left, right):
-        if (
-            (left.tag == "LITERAL" and left.value != right)
-            or (isinstance(right, E) and left.tag != right.tag)
-            or (left.tag != "LITERAL" and not isinstance(right, E))
-        ):
-            if callable(left.tag):
-                left.unmount()
-            self._widget = None
-            self.value = Node(right, left.parent)
-            active.renderer.replace_widget(self.value)
-
-    def unmount(self):
-        pass
+    def replace_child(self, node: "Node") -> None:
+        if callable(self.tag):
+            self._widget = node.widget
+            self.parent.replace_child(self)
+        else:
+            # Since I am not callable, and I cannot be a literal, I must ask the renderer to deal
+            # with this
+            active.renderer.replace_node(self, node)
 
     @classmethod
     def from_values(cls, parent, tag, value, props=None, state=None):

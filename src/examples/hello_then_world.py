@@ -10,8 +10,7 @@ def Main():
 
     @pyx.use_task([])
     async def _():
-        await asyncio.sleep(0.7)
-        # breakpoint()
+        await asyncio.sleep(0.4)
         set_msg("hello world")
 
     return msg
@@ -23,3 +22,5 @@ if __name__ == "__main__":
     pyx.rich.run(E()[E(Main)])
     pyx.rich.run(E("div")[E(Main)])
     pyx.rich.run(E("div", style="yellow")[E(Main)])
+    pyx.rich.run(E()[E()[E("div")[E(Main)]]])
+    pyx.rich.run(E()[E()[E("div", style="yellow")[E(Main)]]])
